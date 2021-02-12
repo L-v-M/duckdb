@@ -11,6 +11,8 @@
 #include "duckdb/common/printer.hpp"
 #include "duckdb/common/limits.hpp"
 #include "duckdb/common/to_string.hpp"
+#include "duckdb/execution/expression_compiler.hpp"
+#include <fmt/core.h>
 
 #include <utility>
 #include <algorithm>
@@ -85,6 +87,8 @@ void QueryProfiler::EndQuery() {
 			query_info = ToString();
 		} else if (automatic_print_format == ProfilerPrintFormat::QUERY_TREE_OPTIMIZER) {
 			query_info = ToString(true);
+		} else if (automatic_print_format == ProfilerPrintFormat::GRAPHVIZ) {
+			query_info = ToGraphviz();
 		}
 
 		if (save_location.empty()) {
@@ -169,7 +173,7 @@ void OperatorProfiler::StartOperator(PhysicalOperator *phys_op) {
 		// add timing for the previous element
 		op.End();
 
-		AddTiming(execution_stack.top(), op.Elapsed(), 0);
+		AddTiming(execution_stack.top(), op.Elapsed(), 0, op.GetNumInstructions(), op.GetNumCycles());
 	}
 
 	execution_stack.push(phys_op);
@@ -186,7 +190,8 @@ void OperatorProfiler::EndOperator(DataChunk *chunk) {
 	// finish timing for the current element
 	op.End();
 
-	AddTiming(execution_stack.top(), op.Elapsed(), chunk ? chunk->size() : 0);
+	AddTiming(execution_stack.top(), op.Elapsed(), chunk ? chunk->size() : 0, op.GetNumInstructions(),
+	          op.GetNumCycles());
 
 	D_ASSERT(!execution_stack.empty());
 	execution_stack.pop();
@@ -197,7 +202,8 @@ void OperatorProfiler::EndOperator(DataChunk *chunk) {
 	}
 }
 
-void OperatorProfiler::AddTiming(PhysicalOperator *op, double time, idx_t elements) {
+void OperatorProfiler::AddTiming(PhysicalOperator *op, double time, idx_t elements, uint64_t instructions,
+                                 uint64_t cycles) {
 	if (!enabled) {
 		return;
 	}
@@ -205,11 +211,13 @@ void OperatorProfiler::AddTiming(PhysicalOperator *op, double time, idx_t elemen
 	auto entry = timings.find(op);
 	if (entry == timings.end()) {
 		// add new entry
-		timings[op] = OperatorTimingInformation(time, elements);
+		timings[op] = OperatorTimingInformation(time, elements, instructions, cycles);
 	} else {
 		// add to existing entry
 		entry->second.time += time;
 		entry->second.elements += elements;
+		entry->second.instructions += instructions;
+		entry->second.cycles += cycles;
 	}
 }
 
@@ -224,6 +232,9 @@ void QueryProfiler::Flush(OperatorProfiler &profiler) {
 
 		entry->second->info.time += node.second.time;
 		entry->second->info.elements += node.second.elements;
+		entry->second->info.instructions += node.second.instructions;
+		entry->second->info.cycles += node.second.cycles;
+		entry->second->compilation_time = ExpressionCompiler::GetCompilationTime(*node.first);
 	}
 }
 
@@ -382,6 +393,77 @@ string QueryProfiler::ToJSON() const {
 	ss << "   \"tree\": ";
 	ToJSONRecursive(*root, ss);
 	ss << "\n}";
+	return ss.str();
+}
+
+//! Convert num to string and insert decimal separators
+static string FormatNumber(uint64_t num) {
+	auto s = to_string(num);
+	int n = s.length() - 3;
+	while (n > 0) {
+		s.insert(n, ",");
+		n -= 3;
+	}
+	return s;
+}
+
+static void ToGraphvizRecursive(QueryProfiler::TreeNode &node, std::ostream &ss, int &node_counter,
+                                int parent_id = -1) {
+	auto node_id = node_counter;
+
+	// assumes that each input relation is read exactly once (e.g. inner hash-join)
+	idx_t processed_tuples = 0;
+	for (const auto &child : node.children) {
+		processed_tuples += child->info.elements;
+	}
+	if (processed_tuples == 0) { // leaf operator
+		processed_tuples = node.info.elements;
+	}
+
+	vector<std::pair<string, string>> key_values {
+	    {"Time (ms):", FormatNumber(node.info.time * 1000)},
+	    {"Expression compilation (ms):", (node.compilation_time ? FormatNumber(node.compilation_time) : "N/A")},
+	    {"Cardinality (tuples):", FormatNumber(node.info.elements)},
+	    {"Total instructions:", FormatNumber(node.info.instructions)},
+	    {"Total cycles:", FormatNumber(node.info.cycles)},
+	    {"Instructions per tuple:",
+	     StringUtil::Format("%.2f", static_cast<double>(node.info.instructions) / processed_tuples)},
+	    {"Cycles per tuple:", StringUtil::Format("%.2f", static_cast<double>(node.info.cycles) / processed_tuples)},
+	    {"IPC:", StringUtil::Format("%.2f", static_cast<double>(node.info.instructions) / node.info.cycles)},
+	};
+	uint64_t max_key_size = 0;
+	uint64_t max_value_size = 0;
+	for (auto &kv : key_values) {
+		max_key_size = std::max(max_key_size, kv.first.length());
+		max_value_size = std::max(max_value_size, kv.second.length());
+	}
+	ss << node_id << " [label=<<B>" << node.name << "</B><BR ALIGN=\"center\"/>";
+	for (auto &kv : key_values) {
+		ss << "<I>" << duckdb_fmt::format("{:<{}}", kv.first, max_key_size) << "</I> "
+		   << duckdb_fmt::format("{:>{}}", kv.second, max_value_size) << "<BR ALIGN=\"left\"/>";
+	}
+	ss << ">];\n";
+	if (parent_id != -1) {
+		ss << node_id << " -> " << parent_id << ";\n";
+	}
+	for (const auto &child : node.children) {
+		ToGraphvizRecursive(*child, ss, ++node_counter, node_id);
+	}
+}
+
+string QueryProfiler::ToGraphviz() const {
+	if (!enabled || query.empty() || !root) {
+		return "";
+	}
+
+	std::stringstream ss;
+	ss << "digraph G {\n"
+	   << "graph [rankdir=BT, label=\"Total time: " << FormatNumber(main_query.Elapsed() * 1000)
+	   << " ms\", labelloc=t, fontname=Courier];\n"
+	   << "node [shape=box, fontname=Courier];\n";
+	int node_counter = 0;
+	ToGraphvizRecursive(*root, ss, node_counter);
+	ss << "}";
 	return ss.str();
 }
 

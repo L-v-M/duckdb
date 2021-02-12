@@ -27,8 +27,12 @@ class SQLStatement;
 struct OperatorTimingInformation {
 	double time = 0;
 	idx_t elements = 0;
+	uint64_t instructions = 0;
+	uint64_t cycles = 0;
 
-	explicit OperatorTimingInformation(double time_ = 0, idx_t elements_ = 0) : time(time_), elements(elements_) {
+	explicit OperatorTimingInformation(double time_ = 0, idx_t elements_ = 0, uint64_t instructions_ = 0,
+	                                   uint64_t cycles_ = 0)
+	    : time(time_), elements(elements_), instructions(instructions_), cycles(cycles_) {
 	}
 };
 
@@ -43,7 +47,7 @@ public:
 	DUCKDB_API void EndOperator(DataChunk *chunk);
 
 private:
-	void AddTiming(PhysicalOperator *op, double time, idx_t elements);
+	void AddTiming(PhysicalOperator *op, double time, idx_t elements, uint64_t instructions, uint64_t cycles);
 
 	//! Whether or not the profiler is enabled
 	bool enabled;
@@ -64,6 +68,7 @@ public:
 		OperatorTimingInformation info;
 		vector<unique_ptr<TreeNode>> children;
 		idx_t depth = 0;
+		uint64_t compilation_time = 0;
 	};
 
 private:
@@ -103,6 +108,7 @@ public:
 	DUCKDB_API void Print();
 
 	DUCKDB_API string ToJSON() const;
+	DUCKDB_API string ToGraphviz() const;
 	DUCKDB_API void WriteToFile(const char *path, string &info) const;
 
 	//! The format to automatically print query profiling information in (default: disabled)

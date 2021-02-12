@@ -26,9 +26,12 @@ static void PragmaEnableProfilingAssignment(ClientContext &context, const Functi
 		context.profiler.automatic_print_format = ProfilerPrintFormat::QUERY_TREE;
 	} else if (assignment == "query_tree_optimizer") {
 		context.profiler.automatic_print_format = ProfilerPrintFormat::QUERY_TREE_OPTIMIZER;
+	} else if (assignment == "graphviz") {
+		context.profiler.automatic_print_format = ProfilerPrintFormat::GRAPHVIZ;
 	} else {
 		throw ParserException(
-		    "Unrecognized print format %s, supported formats: [json, query_tree, query_tree_optimizer]", assignment);
+		    "Unrecognized print format %s, supported formats: [json, query_tree, query_tree_optimizer, graphviz]",
+		    assignment);
 	}
 	context.profiler.Enable();
 }

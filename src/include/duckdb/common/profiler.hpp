@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include "duckdb/common/helper.hpp"
 #include "duckdb/common/chrono.hpp"
+#include "duckdb/common/helper.hpp"
+#include "duckdb/main/perf_counters.hpp"
 
 namespace duckdb {
 
@@ -20,11 +21,13 @@ public:
 	void Start() {
 		finished = false;
 		start = Tick();
+		perf_counters.StartCounting();
 	}
 	//! Finishes timing
 	void End() {
 		end = Tick();
 		finished = true;
+		perf_counters.StopCounting();
 	}
 
 	//! Returns the elapsed time in seconds. If End() has been called, returns
@@ -35,6 +38,14 @@ public:
 		return std::chrono::duration_cast<std::chrono::duration<double>>(_end - start).count();
 	}
 
+	long long GetNumInstructions() {
+		return perf_counters.GetNumInstructions();
+	}
+
+	long long GetNumCycles() {
+		return perf_counters.GetNumCycles();
+	}
+
 private:
 	time_point<system_clock> Tick() const {
 		return system_clock::now();
@@ -42,5 +53,6 @@ private:
 	time_point<system_clock> start;
 	time_point<system_clock> end;
 	bool finished = false;
+	PerfCounters perf_counters;
 };
 } // namespace duckdb

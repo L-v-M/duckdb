@@ -27,6 +27,8 @@ Connection::Connection(DuckDB &database) : Connection(*database.instance) {
 string Connection::GetProfilingInformation(ProfilerPrintFormat format) {
 	if (format == ProfilerPrintFormat::JSON) {
 		return context->profiler.ToJSON();
+	} else if (format == ProfilerPrintFormat::GRAPHVIZ) {
+		return context->profiler.ToGraphviz();
 	} else {
 		return context->profiler.ToString();
 	}
