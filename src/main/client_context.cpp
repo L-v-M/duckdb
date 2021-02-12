@@ -3,6 +3,7 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/common/serializer/buffered_deserializer.hpp"
 #include "duckdb/common/serializer/buffered_serializer.hpp"
+#include "duckdb/execution/expression_compiler.hpp"
 #include "duckdb/execution/physical_plan_generator.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/materialized_query_result.hpp"
@@ -177,6 +178,13 @@ shared_ptr<PreparedStatementData> ClientContext::CreatePreparedStatement(ClientC
 	PhysicalPlanGenerator physical_planner(*this);
 	auto physical_plan = physical_planner.CreatePlan(move(plan));
 	profiler.EndPhase();
+
+	if (enable_expression_compilation) {
+		profiler.StartPhase("expression_compiler");
+		ExpressionCompiler expression_compiler(*this);
+		expression_compiler.CompileExpressions(*physical_plan);
+		profiler.EndPhase();
+	}
 
 	result->plan = move(physical_plan);
 	return result;

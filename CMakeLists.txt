@@ -421,6 +421,12 @@ if(${EXPORT_DLL_SYMBOLS})
   add_definitions(-DDUCKDB_BUILD_LIBRARY)
 endif()
 
+# Expression compiler
+set(EXPRESSION_COMPILER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/expression_compiler_output/)
+file(MAKE_DIRECTORY ${EXPRESSION_COMPILER_OUTPUT_DIR})
+add_compile_definitions(EXPRESSION_COMPILER_OUTPUT_DIR="${EXPRESSION_COMPILER_OUTPUT_DIR}")
+add_compile_definitions(DUCKDB_PATH_TO_LIBRARY="${CMAKE_BINARY_DIR}/src/libduckdb.so")
+
 add_subdirectory(src)
 
 add_subdirectory(extension)

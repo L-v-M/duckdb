@@ -26,6 +26,11 @@ void ExpressionExecutor::Execute(BoundFunctionExpression &expr, ExpressionState 
                                  idx_t count, Vector &result) {
 	auto &fstate = (FunctionExpressionState &)*state;
 	auto &arguments = fstate.arguments;
+
+	if (expr.compiled_expression && expr.compiled_expression->IsReady()) {
+		expr.compiled_expression->Upgrade(expr, *state, arguments);
+	}
+
 	if (!state->types.empty()) {
 		arguments.Reference(state->intermediate_chunk);
 		for (idx_t i = 0; i < expr.children.size(); i++) {

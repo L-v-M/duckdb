@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/execution/expression_compiler.hpp"
 #include "duckdb/function/scalar_function.hpp"
 #include "duckdb/planner/expression.hpp"
 
@@ -23,6 +24,9 @@ public:
 
 	// The bound function expression
 	ScalarFunction function;
+	//! The compiled expression (if any) that replaces the bound function expression during execution.
+	//! Must be a shared_ptr since CompiledExpression is a move-only type
+	shared_ptr<CompiledExpression> compiled_expression;
 	//! List of child-expressions of the function
 	vector<unique_ptr<Expression>> children;
 	//! The bound function data (if any)
