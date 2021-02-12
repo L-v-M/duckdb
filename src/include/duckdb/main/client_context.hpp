@@ -62,6 +62,8 @@ public:
 	bool query_verification_enabled = false;
 	//! Enable the running of optimizers
 	bool enable_optimizer = true;
+	//! Enable the compilation of expressions
+	bool enable_expression_compilation = false;
 	//! Force parallelism of small tables, used for testing
 	bool force_parallelism = false;
 	//! Force index join independent of table cardinality, used for testing

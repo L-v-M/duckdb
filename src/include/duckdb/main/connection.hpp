@@ -50,6 +50,11 @@ public:
 	//! Disable query profiling
 	DUCKDB_API void DisableProfiling();
 
+	//! Enable expression compilation
+	DUCKDB_API void EnableExpressionCompilation();
+	//! Disable expression compilation
+	DUCKDB_API void DisableExpressionCompilation();
+
 	DUCKDB_API void SetWarningCallback(warning_callback);
 
 	//! Enable aggressive verification/testing of queries, should only be used in testing

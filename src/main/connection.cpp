@@ -44,6 +44,14 @@ void Connection::DisableProfiling() {
 	context->DisableProfiling();
 }
 
+void Connection::EnableExpressionCompilation() {
+	context->enable_expression_compilation = true;
+}
+
+void Connection::DisableExpressionCompilation() {
+	context->enable_expression_compilation = false;
+}
+
 void Connection::EnableQueryVerification() {
 	context->query_verification_enabled = true;
 }

@@ -170,6 +170,14 @@ static void PragmaDisableOptimizer(ClientContext &context, const FunctionParamet
 	context.enable_optimizer = false;
 }
 
+static void PragmaEnableExpressionCompilation(ClientContext &context, const FunctionParameters &parameters) {
+	context.enable_expression_compilation = true;
+}
+
+static void PragmaDisableExpressionCompilation(ClientContext &context, const FunctionParameters &parameters) {
+	context.enable_expression_compilation = false;
+}
+
 static void PragmaPerfectHashThreshold(ClientContext &context, const FunctionParameters &parameters) {
 	auto bits = parameters.values[0].GetValue<int32_t>();
 	;
@@ -233,6 +241,11 @@ void PragmaFunctions::RegisterFunction(BuiltinFunctions &set) {
 
 	set.AddFunction(PragmaFunction::PragmaStatement("enable_optimizer", PragmaEnableOptimizer));
 	set.AddFunction(PragmaFunction::PragmaStatement("disable_optimizer", PragmaDisableOptimizer));
+
+	set.AddFunction(
+	    PragmaFunction::PragmaStatement("enable_expression_compilation", PragmaEnableExpressionCompilation));
+	set.AddFunction(
+	    PragmaFunction::PragmaStatement("disable_expression_compilation", PragmaDisableExpressionCompilation));
 
 	set.AddFunction(PragmaFunction::PragmaAssignment("log_query_path", PragmaLogQueryPath, LogicalType::VARCHAR));
 	set.AddFunction(PragmaFunction::PragmaAssignment("explain_output", PragmaExplainOutput, LogicalType::VARCHAR));
