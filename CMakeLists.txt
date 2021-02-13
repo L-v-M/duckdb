@@ -425,7 +425,7 @@ endif()
 set(EXPRESSION_COMPILER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/expression_compiler_output/)
 file(MAKE_DIRECTORY ${EXPRESSION_COMPILER_OUTPUT_DIR})
 add_compile_definitions(EXPRESSION_COMPILER_OUTPUT_DIR="${EXPRESSION_COMPILER_OUTPUT_DIR}")
-add_compile_definitions(DUCKDB_PATH_TO_LIBRARY="${CMAKE_BINARY_DIR}/src/libduckdb.so")
+add_compile_definitions(INCLUDE_DIR="${CMAKE_SOURCE_DIR}/src/include")
 
 add_subdirectory(src)
 

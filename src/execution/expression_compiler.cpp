@@ -397,7 +397,7 @@ CompiledExpression::CompiledExpression(string code, const string &function_name,
 
 	std::ostringstream command_stream;
 	command_stream << "clang++ -fPIC -rdynamic -O3 -DNDEBUG -shared -std=c++11 " << code_file << " -o "
-	               << compiled_code_file << " " << DUCKDB_PATH_TO_LIBRARY << " > " << error_messages_file << " 2>&1";
+	               << compiled_code_file << " -I" << INCLUDE_DIR << " > " << error_messages_file << " 2>&1";
 	auto command = "bash -c \"" + move(command_stream).str() + "\"";
 	auto result = system(command.c_str());
 	if (result == -1) {
